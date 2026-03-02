@@ -13,13 +13,6 @@ from typing import List, Dict, Optional, Tuple
 import requests
 
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-CATALOG_PATH = "shl-recommendation/scripts/data/shl_catalog.json"
-EMBEDDINGS_PATH = "shl-recommendation/scripts/data/shl_catalog_embeddings.npy"
-
-print(f"--- DEBUG: Trying relative path: {CATALOG_PATH}")
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -50,15 +43,19 @@ GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/g
 EXPECTED_EMBED_DIM = 768
 
 # 3. Robust Path Logic
-current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = current_file_dir
-while project_root and not os.path.exists(os.path.join(project_root, 'scripts')):
-    parent = os.path.dirname(project_root)
-    if parent == project_root: break
-    project_root = parent
+CATALOG_PATH = "/app/shl-recommendation/scripts/data/shl_catalog.json"
+EMBEDDINGS_PATH = "/app/shl-recommendation/scripts/data/shl_catalog_embeddings.npy"
 
-CATALOG_PATH = os.path.join(project_root, 'scripts', 'data', 'shl_catalog.json')
+# Fallback for local Windows testing (if /app doesn't exist)
+if not os.path.exists(CATALOG_PATH):
+    # This rebuilds the path based on your local folder structure
+    current_file_dir = os.path.dirname(os.path.abspath(__file__)) # .../backend
+    project_root = os.path.dirname(current_file_dir) # .../shl-recommendation
+    CATALOG_PATH = os.path.join(project_root, 'scripts', 'data', 'shl_catalog.json')
+    EMBEDDINGS_PATH = os.path.join(project_root, 'scripts', 'data', 'shl_catalog_embeddings.npy')
+
 print(f"--- SUCCESS: ENGINE POINTED TO {CATALOG_PATH} ---")
+
 
 
 # ---------------------------------------------------------------------------
