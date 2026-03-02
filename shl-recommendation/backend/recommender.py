@@ -8,8 +8,18 @@ import numpy as np
 import os
 import re
 import logging
+import time
 from typing import List, Dict, Optional, Tuple
 import requests
+
+import os
+
+# Get the directory where the current script is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Build the path relative to the script
+CATALOG_PATH = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog.json")
+EMBEDDINGS_PATH = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog_embeddings.npy")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -56,29 +66,45 @@ print(f"--- SUCCESS: ENGINE POINTED TO {CATALOG_PATH} ---")
 # Embedding utilities
 # ---------------------------------------------------------------------------
 
-def get_embedding_gemini(text: str, api_key: str) -> Optional[np.ndarray]:
-    """Get embedding using Gemini text-embedding-004."""
-    # FIX: Use the base URL + pass key via params={} — never concatenate ?key= onto a URL
-    # that already has ?key= baked in.
+def get_embedding_gemini(text: str, api_key: str, max_retries: int = 5) -> Optional[np.ndarray]:
     payload = {
-        "model": "models/text-embedding-004",
+        "model": "models/gemini-embedding-001",
         "content": {"parts": [{"text": text[:8192]}]}
     }
-    import time
-    time.sleep(0.5)
-    try:
-        resp = requests.post(
-            GEMINI_EMBED_URL,
-            params={"key": api_key},
-            json=payload,
-            timeout=20
-        )
-        resp.raise_for_status()
-        values = resp.json()['embedding']['values']
-        return np.array(values, dtype=np.float32)
-    except Exception as e:
-        logger.error(f"Gemini embedding error: {e}")
-        return None
+    
+    for attempt in range(max_retries):
+        try:
+            resp = requests.post(
+                GEMINI_EMBED_URL,
+                params={"key": api_key},
+                json=payload,
+                timeout=30 # Increased timeout for 'Read timed out' errors
+            )
+            
+            if resp.status_code == 429:
+                # Rate limit hit: wait and retry with exponential backoff
+                wait_time = (2 ** attempt) + random.random()
+                logger.warning(f"Rate limit hit. Waiting {wait_time:.2f}s before retry {attempt+1}/{max_retries}")
+                time.sleep(wait_time)
+                continue
+                
+            resp.raise_for_status()
+            values = resp.json()['embedding']['values']
+            
+            # Small mandatory pause to stay under the 15 RPM limit
+            time.sleep(1.5) 
+            
+            return np.array(values, dtype=np.float32)
+
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
+            wait_time = (2 ** attempt) + 2
+            logger.warning(f"Network issue. Retrying in {wait_time}s...")
+            time.sleep(wait_time)
+        except Exception as e:
+            logger.error(f"Gemini embedding error: {e}")
+            return None
+            
+    return None
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
