@@ -44,22 +44,29 @@ GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/g
 EXPECTED_EMBED_DIM = 768
 
 # 3. Robust Path Logic
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))      # backend/
-PROJECT_ROOT = os.path.dirname(BASE_DIR)                   # project root/
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))          # backend/
+SHL_RECOMMENDATION_DIR = os.path.dirname(BASE_DIR)             # shl-recommendation/
+PROJECT_ROOT = os.path.dirname(SHL_RECOMMENDATION_DIR)         # shl-smart-recommender/
 
-# Try Path A: Relative to backend (Local)
-CATALOG_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog.json")
-EMBEDDINGS_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog_embeddings.npy")
+CATALOG_PATH = os.path.join(
+    SHL_RECOMMENDATION_DIR,
+    "scripts",
+    "data",
+    "shl_catalog.json"
+)
 
-# Try Path B: Absolute Docker path (Render)
-if not os.path.exists(CATALOG_PATH):
-    DOCKER_PATH = "/app/scripts/data/shl_catalog.json"
-    if os.path.exists(DOCKER_PATH):
-        CATALOG_PATH = DOCKER_PATH
-        EMBEDDINGS_PATH = "/app/scripts/data/shl_catalog_embeddings.npy"
+EMBEDDINGS_PATH = os.path.join(
+    SHL_RECOMMENDATION_DIR,
+    "scripts",
+    "data",
+    "shl_catalog_embeddings.npy"
+)
 
-print(f"--- SYSTEM BOOT: ENGINE USING CATALOG PATH: {CATALOG_PATH} ---")
-print(f"--- SYSTEM BOOT: File exists: {os.path.exists(CATALOG_PATH)} ---")
+print("BASE_DIR:", BASE_DIR)
+print("SHL_RECOMMENDATION_DIR:", SHL_RECOMMENDATION_DIR)
+print("PROJECT_ROOT:", PROJECT_ROOT)
+print("CATALOG_PATH:", CATALOG_PATH)
+print("File exists:", os.path.exists(CATALOG_PATH))
 
 
 
