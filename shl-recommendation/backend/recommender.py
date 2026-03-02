@@ -35,7 +35,19 @@ if not GEMINI_API_KEY:
 GEMINI_EMBED_URL    = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
 GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent"
 EXPECTED_EMBED_DIM  = 768  # text-embedding-004 outputs 768 dims (NOT 3072)
+CATALOG_PATH = "/app/shl-recommendation/scripts/data/shl_catalog.json"
 
+# Local Fallback (for Windows/VS Code testing)
+if not os.path.exists(CATALOG_PATH):
+    # This finds the 'scripts' folder relative to this script's location
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # backend/
+    PROJECT_ROOT = os.path.dirname(BASE_DIR)              # shl-recommendation/
+    CATALOG_PATH = os.path.join(PROJECT_ROOT, 'scripts', 'data', 'shl_catalog.json')
+
+EMBEDDINGS_PATH = CATALOG_PATH.replace('.json', '_embeddings.npy')
+
+print(f"--- CATALOG_PATH resolved to: {CATALOG_PATH} ---")
+print(f"--- File exists: {os.path.exists(CATALOG_PATH)} ---")
 # Robust path resolution — works locally (backend/ subfolder) and on Render (/app flat)
 # Priority:
 #   1. CATALOG_PATH environment variable (set this on Render to override everything)
