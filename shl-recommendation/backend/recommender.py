@@ -44,7 +44,7 @@ GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/g
 EXPECTED_EMBED_DIM = 768
 
 # 3. Robust Path Logic
-ASE_DIR = os.path.dirname(os.path.abspath(__file__))      # backend/
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))      # backend/
 PROJECT_ROOT = os.path.dirname(BASE_DIR)                   # project root/
 
 # Try Path A: Relative to backend (Local)
