@@ -19,4 +19,6 @@ EXPOSE 8000
 
 # 7. Start the app
 # Corrected path to the FastAPI app object in app.py
-CMD ["uvicorn", "shl-recommendation.backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Replace your current Step 7 with this:
+CMD ["sh", "-c", "cd shl-recommendation/backend && uvicorn app:app --host 0.0.0.0 --port 8000"]
+
