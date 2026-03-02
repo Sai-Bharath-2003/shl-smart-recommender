@@ -546,9 +546,14 @@ class RecommendationEngine:
 _engine: Optional[RecommendationEngine] = None
 
 
-def get_engine(catalog_path: str = CATALOG_PATH, api_key: str = "") -> RecommendationEngine:
+def get_engine(catalog_path=None, api_key: str = "") -> RecommendationEngine:
     """Get or create the singleton engine instance."""
     global _engine
+    
+    # Force use of the globally defined CATALOG_PATH if none provided
+    if catalog_path is None:
+        catalog_path = CATALOG_PATH
+        
     if _engine is None:
         _engine = RecommendationEngine(catalog_path, api_key)
         _engine.initialize()
