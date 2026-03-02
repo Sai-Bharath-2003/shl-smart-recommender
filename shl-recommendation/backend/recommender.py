@@ -8,11 +8,8 @@ import numpy as np
 import os
 import re
 import logging
-import random
-import time
 from typing import List, Dict, Optional, Tuple
 import requests
-
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -27,94 +24,85 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")  # Set via: set GEMINI_API
 if not GEMINI_API_KEY:
     raise EnvironmentError(
         "\n\n  GEMINI_API_KEY is not set!\n"
-        "  Run this before starting the server:\n"
-        "    set GEMINI_API_KEY=AIzaSyAn0o1Wy9aRd8Pl1JNH8FCTa6fUwhj_3xo\n"
+        "  In PowerShell, run:\n"
+        "    $env:GEMINI_API_KEY='AIzaSyAn0o1Wy9aRd8Pl1JNH8FCTa6fUwhj_3xo'\n"
+        "  (NOT 'set ...' — that only works in CMD, not PowerShell)\n"
     )
 
 # Base URLs ONLY — key passed via params={"key":...} at call time, never baked into URL string.
 # text-embedding-004  → 768-dim vectors, requires v1beta
 # gemini-2.0-flash-001 → stable GA model name (not the alias gemini-2.0-flash)
-# 1. Use the most stable embedding model for v1beta
-GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
+GEMINI_EMBED_URL    = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent"
+EXPECTED_EMBED_DIM  = 768  # text-embedding-004 outputs 768 dims (NOT 3072)
 
-# 2. The new stable Flash model (Replaces gemini-2.0-flash-001)
-GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+# Robust path resolution — works locally (backend/ subfolder) and on Render (/app flat)
+# Priority:
+#   1. CATALOG_PATH environment variable (set this on Render to override everything)
+#   2. Walk up from recommender.py location looking for scripts/data/shl_catalog.json
+#   3. Check common Render absolute paths as fallback
 
-# 3. New dimension for gemini-embedding-001 (IMPORTANT)
-EXPECTED_EMBED_DIM = 768
+def _find_catalog_path() -> str:
+    # Priority 1: explicit env var (set this in Render dashboard)
+    env_path = os.environ.get("CATALOG_PATH", "")
+    if env_path and os.path.exists(env_path):
+        return env_path
 
-# 3. Robust Path Logic
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))          # backend/
-SHL_RECOMMENDATION_DIR = os.path.dirname(BASE_DIR)             # shl-recommendation/
-PROJECT_ROOT = os.path.dirname(SHL_RECOMMENDATION_DIR)         # shl-smart-recommender/
+    # Priority 2: walk up from this file's directory
+    search_dir = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(6):  # walk up max 6 levels
+        candidate = os.path.join(search_dir, 'scripts', 'data', 'shl_catalog.json')
+        if os.path.exists(candidate):
+            return candidate
+        parent = os.path.dirname(search_dir)
+        if parent == search_dir:
+            break
+        search_dir = parent
 
-CATALOG_PATH = os.path.join(
-    SHL_RECOMMENDATION_DIR,
-    "scripts",
-    "data",
-    "shl_catalog.json"
-)
+    # Priority 3: known Render paths (/app is the Render working dir)
+    fallbacks = [
+        '/app/scripts/data/shl_catalog.json',
+        '/app/backend/../scripts/data/shl_catalog.json',
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts', 'data', 'shl_catalog.json'),
+    ]
+    for path in fallbacks:
+        norm = os.path.normpath(path)
+        if os.path.exists(norm):
+            return norm
 
-EMBEDDINGS_PATH = os.path.join(
-    SHL_RECOMMENDATION_DIR,
-    "scripts",
-    "data",
-    "shl_catalog_embeddings.npy"
-)
+    # Return best guess — will fail with clear error at load time
+    return '/app/scripts/data/shl_catalog.json'
 
-print("BASE_DIR:", BASE_DIR)
-print("SHL_RECOMMENDATION_DIR:", SHL_RECOMMENDATION_DIR)
-print("PROJECT_ROOT:", PROJECT_ROOT)
-print("CATALOG_PATH:", CATALOG_PATH)
-print("File exists:", os.path.exists(CATALOG_PATH))
-
-
-
+CATALOG_PATH = _find_catalog_path()
+print(f"--- CATALOG_PATH resolved to: {CATALOG_PATH} ---")
+print(f"--- File exists: {os.path.exists(CATALOG_PATH)} ---")
 
 
 # ---------------------------------------------------------------------------
 # Embedding utilities
 # ---------------------------------------------------------------------------
 
-def get_embedding_gemini(text: str, api_key: str, max_retries: int = 5) -> Optional[np.ndarray]:
+def get_embedding_gemini(text: str, api_key: str) -> Optional[np.ndarray]:
+    """Get embedding using Gemini text-embedding-004."""
+    # FIX: Use the base URL + pass key via params={} — never concatenate ?key= onto a URL
+    # that already has ?key= baked in.
     payload = {
-        "model": "models/gemini-embedding-001",
+        "model": "models/text-embedding-004",
         "content": {"parts": [{"text": text[:8192]}]}
     }
-    
-    for attempt in range(max_retries):
-        try:
-            resp = requests.post(
-                GEMINI_EMBED_URL,
-                params={"key": api_key},
-                json=payload,
-                timeout=30 # Increased timeout for 'Read timed out' errors
-            )
-            
-            if resp.status_code == 429:
-                # Rate limit hit: wait and retry with exponential backoff
-                wait_time = (2 ** attempt) + random.random()
-                logger.warning(f"Rate limit hit. Waiting {wait_time:.2f}s before retry {attempt+1}/{max_retries}")
-                time.sleep(wait_time)
-                continue
-                
-            resp.raise_for_status()
-            values = resp.json()['embedding']['values']
-            
-            # Small mandatory pause to stay under the 15 RPM limit
-            time.sleep(1.5) 
-            
-            return np.array(values, dtype=np.float32)
-
-        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
-            wait_time = (2 ** attempt) + 2
-            logger.warning(f"Network issue. Retrying in {wait_time}s...")
-            time.sleep(wait_time)
-        except Exception as e:
-            logger.error(f"Gemini embedding error: {e}")
-            return None
-            
-    return None
+    try:
+        resp = requests.post(
+            GEMINI_EMBED_URL,
+            params={"key": api_key},
+            json=payload,
+            timeout=20
+        )
+        resp.raise_for_status()
+        values = resp.json()['embedding']['values']
+        return np.array(values, dtype=np.float32)
+    except Exception as e:
+        logger.error(f"Gemini embedding error: {e}")
+        return None
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -560,12 +548,10 @@ class RecommendationEngine:
 _engine: Optional[RecommendationEngine] = None
 
 
-def get_engine(catalog_path=None, api_key: str = "") -> RecommendationEngine:
+def get_engine(catalog_path: str = CATALOG_PATH, api_key: str = "") -> RecommendationEngine:
+    """Get or create the singleton engine instance."""
     global _engine
-    # If no path is passed, use the CATALOG_PATH we just calculated above
-    current_path = catalog_path if catalog_path else CATALOG_PATH
-    
     if _engine is None:
-        _engine = RecommendationEngine(current_path, api_key)
+        _engine = RecommendationEngine(catalog_path, api_key)
         _engine.initialize()
     return _engine
