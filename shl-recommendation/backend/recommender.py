@@ -16,12 +16,11 @@ import requests
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 2. Go up one level to the project root (/app/shl-recommendation)
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+# Hardcoded absolute paths for the Docker environment
+CATALOG_PATH = "/app/shl-recommendation/scripts/data/shl_catalog.json"
+EMBEDDINGS_PATH = "/app/shl-recommendation/scripts/data/shl_catalog_embeddings.npy"
 
-# 3. Define the path to the scripts folder
-CATALOG_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog.json")
-
-print(f"--- SYSTEM BOOT: Looking for catalog at {CATALOG_PATH} ---")
+print(f"--- SYSTEM BOOT: FORCED PATH TO {CATALOG_PATH} ---")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
