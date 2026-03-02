@@ -12,14 +12,16 @@ import time
 from typing import List, Dict, Optional, Tuple
 import requests
 
-import os
 
-# Get the directory where the current script is located
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# This gets the directory where recommender.py is located
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Build the path relative to the script
-CATALOG_PATH = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog.json")
-EMBEDDINGS_PATH = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog_embeddings.npy")
+# Use join to build the path WITHOUT a leading slash on 'scripts'
+# This ensures it looks INSIDE the current folder
+catalog_path = os.path.join(current_dir, "scripts", "data", "shl_catalog.json")
+embeddings_path = os.path.join(current_dir, "scripts", "data", "shl_catalog_embeddings.npy")
+
+print(f"--- DEBUG: Looking for catalog at: {catalog_path} ---")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
