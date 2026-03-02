@@ -20,10 +20,10 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
 
 # Build the paths
-catalog_path = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog.json")
-embeddings_path = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog_embeddings.npy")
+catalog_path = "shl-recommendation/scripts/data/shl_catalog.json"
+embeddings_path = "shl-recommendation/scripts/data/shl_catalog_embeddings.npy"
 
-print(f"--- DEBUG: ACTUAL SEARCH PATH: {catalog_path} ---")
+print(f"--- DEBUG: TRYING RELATIVE PATH: {catalog_path} ---")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
