@@ -44,14 +44,22 @@ GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/g
 EXPECTED_EMBED_DIM = 768
 
 # 3. Robust Path Logic
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))      # backend/
+ASE_DIR = os.path.dirname(os.path.abspath(__file__))      # backend/
 PROJECT_ROOT = os.path.dirname(BASE_DIR)                   # project root/
 
+# Try Path A: Relative to backend (Local)
 CATALOG_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog.json")
 EMBEDDINGS_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog_embeddings.npy")
 
-print(f"ENGINE USING CATALOG PATH: {CATALOG_PATH}")
-print("File exists:", os.path.exists(CATALOG_PATH))
+# Try Path B: Absolute Docker path (Render)
+if not os.path.exists(CATALOG_PATH):
+    DOCKER_PATH = "/app/scripts/data/shl_catalog.json"
+    if os.path.exists(DOCKER_PATH):
+        CATALOG_PATH = DOCKER_PATH
+        EMBEDDINGS_PATH = "/app/scripts/data/shl_catalog_embeddings.npy"
+
+print(f"--- SYSTEM BOOT: ENGINE USING CATALOG PATH: {CATALOG_PATH} ---")
+print(f"--- SYSTEM BOOT: File exists: {os.path.exists(CATALOG_PATH)} ---")
 
 
 
@@ -546,14 +554,11 @@ _engine: Optional[RecommendationEngine] = None
 
 
 def get_engine(catalog_path=None, api_key: str = "") -> RecommendationEngine:
-    """Get or create the singleton engine instance."""
     global _engine
+    # If no path is passed, use the CATALOG_PATH we just calculated above
+    current_path = catalog_path if catalog_path else CATALOG_PATH
     
-    # Force use of the globally defined CATALOG_PATH if none provided
-    if catalog_path is None:
-        catalog_path = CATALOG_PATH
-        
     if _engine is None:
-        _engine = RecommendationEngine(catalog_path, api_key)
+        _engine = RecommendationEngine(current_path, api_key)
         _engine.initialize()
     return _engine
