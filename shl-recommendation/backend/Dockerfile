@@ -4,18 +4,19 @@ FROM python:3.11-slim
 # 2. Set working directory inside the container
 WORKDIR /app
 
-# 3. Copy requirements using the path relative to the REPO ROOT
+# 3. Copy requirements from the correct nested path
+# We use the path relative to the REPO ROOT
 COPY shl-recommendation/backend/requirements.txt .
 
 # 4. Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy the ENTIRE repository (grabs backend and scripts)
+# 5. Copy the ENTIRE repository
 COPY . .
 
 # 6. Expose port
 EXPOSE 8000
 
 # 7. Start the app
-# Note the path to app.py inside the subfolder
+# Corrected path to the FastAPI app object in app.py
 CMD ["uvicorn", "shl-recommendation.backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
