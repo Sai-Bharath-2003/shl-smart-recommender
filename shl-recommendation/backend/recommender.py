@@ -15,15 +15,13 @@ import requests
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Move up one level to reach 'shl-recommendation' folder
-# This will result in /app/shl-recommendation
-BASE_DIR = os.path.dirname(CURRENT_DIR)
+# 2. Go up one level to the project root (/app/shl-recommendation)
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 
-# Build the paths
-catalog_path = "shl-recommendation/scripts/data/shl_catalog.json"
-embeddings_path = "shl-recommendation/scripts/data/shl_catalog_embeddings.npy"
+# 3. Define the path to the scripts folder
+CATALOG_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog.json")
 
-print(f"--- DEBUG: TRYING RELATIVE PATH: {catalog_path} ---")
+print(f"--- SYSTEM BOOT: Looking for catalog at {CATALOG_PATH} ---")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
