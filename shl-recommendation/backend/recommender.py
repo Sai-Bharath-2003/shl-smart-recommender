@@ -13,12 +13,15 @@ from typing import List, Dict, Optional, Tuple
 import requests
 
 
-# Get the base directory (/app)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Build the path including the 'shl-recommendation' folder
-catalog_path = os.path.join(BASE_DIR, "shl-recommendation", "scripts", "data", "shl_catalog.json")
-embeddings_path = os.path.join(BASE_DIR, "shl-recommendation", "scripts", "data", "shl_catalog_embeddings.npy")
+# Move up one level to reach 'shl-recommendation' folder
+# This will result in /app/shl-recommendation
+BASE_DIR = os.path.dirname(CURRENT_DIR)
+
+# Build the paths
+catalog_path = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog.json")
+embeddings_path = os.path.join(BASE_DIR, "scripts", "data", "shl_catalog_embeddings.npy")
 
 print(f"--- DEBUG: ACTUAL SEARCH PATH: {catalog_path} ---")
 
