@@ -8,6 +8,7 @@ import numpy as np
 import os
 import re
 import logging
+import random
 import time
 from typing import List, Dict, Optional, Tuple
 import requests
@@ -43,18 +44,16 @@ GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/g
 EXPECTED_EMBED_DIM = 768
 
 # 3. Robust Path Logic
-CATALOG_PATH = "/app/shl-recommendation/scripts/data/shl_catalog.json"
-EMBEDDINGS_PATH = "/app/shl-recommendation/scripts/data/shl_catalog_embeddings.npy"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))      # backend/
+PROJECT_ROOT = os.path.dirname(BASE_DIR)                   # project root/
 
-# Fallback for local Windows testing (if /app doesn't exist)
-if not os.path.exists(CATALOG_PATH):
-    # This rebuilds the path based on your local folder structure
-    current_file_dir = os.path.dirname(os.path.abspath(__file__)) # .../backend
-    project_root = os.path.dirname(current_file_dir) # .../shl-recommendation
-    CATALOG_PATH = os.path.join(project_root, 'scripts', 'data', 'shl_catalog.json')
-    EMBEDDINGS_PATH = os.path.join(project_root, 'scripts', 'data', 'shl_catalog_embeddings.npy')
+CATALOG_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog.json")
+EMBEDDINGS_PATH = os.path.join(PROJECT_ROOT, "scripts", "data", "shl_catalog_embeddings.npy")
 
-print(f"--- SUCCESS: ENGINE POINTED TO {CATALOG_PATH} ---")
+print(f"ENGINE USING CATALOG PATH: {CATALOG_PATH}")
+print("File exists:", os.path.exists(CATALOG_PATH))
+
+
 
 
 
