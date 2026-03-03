@@ -130,66 +130,13 @@ function SearchSection({ onSubmit, queryCount, prefillQuery, grow, shrink }) {
 
   const query = tab === 'text' ? textQ : urlQ;
 
-// 1. Define the URL at the top of your App component
-const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
-
-// 2. Replace the Health Check useEffect
-useEffect(() => {
-  fetch(`${API_BASE_URL}/health`) // Points directly to Render
-    .then(r => {
-      if (!r.ok) throw new Error('Network response was not ok');
-      return r.json();
-    })
-    .then(d => { 
-      if (d.status === 'healthy' || d.status === 'online') {
-        showToast('API connected ✓', 'success'); 
-      }
-    })
-    .catch(() => {
-      // Updated error message to reflect reality
-      showToast('Connecting to Render backend...', 'error');
-    });
-}, [showToast]);
-
-// 3. Update the Recommendation Call (around line 231)
-  const API_BASE_URL = process.env.REACT_APP_API_URL;
-
-const handleSubmit = async (query, maxN, filterType) => {
-  if (!query?.trim()) return;
-
-  setLoading(true);
-  try {
-    const res = await fetch(`${API_BASE_URL}/recommend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, max_results: maxN }),
-    });
-
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.detail || `HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-
-    const recs = data.recommended_assessments || data;
-
-    setResults(recs);
-    setCurrentQ(query);
-    setShowResults(true);
-    setQueryCount(c => c + 1);
-
-    const lbl = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setHistory(h => [{ query, time: lbl }, ...h.slice(0, 4)]);
-
-    document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth' });
-
-  } catch (e) {
-    showToast(e.message || 'Failed to fetch recommendations', 'error');
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleSubmit = async () => {
+    if (!query.trim()) { setError('Please enter a job description, query, or URL.'); return; }
+    setError(''); setLoading(true);
+    try { await onSubmit(query.trim(), maxN, filterType); }
+    catch (e) { setError(e.message + ' — make sure the backend is running on port 8000.'); }
+    finally { setLoading(false); }
+  };
 
   return (
     <section className="hero" id="search-section">
@@ -485,42 +432,36 @@ export default function App() {
 
   // API health check
   useEffect(() => {
-    fetch(`${API_BASE_URL}/health`)
-      .then(r => r.json())
-      .then(d => { 
-        if (d.status === 'healthy') showToast('API connected ✓', 'success'); 
-      })
-      .catch(() => showToast('Connecting to Render backend...', 'error'));
-  }, [showToast]);
+    fetch('/health').then(r => r.json())
+      .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
+      .catch(() => showToast('API offline — start the backend on port 8000', 'error'));
+  // eslint-disable-next-line
+  }, []);
 
- const handleSubmit = async (query, maxN, filterType) => {
+  const handleSubmit = async (query, maxN, filterType) => {
     setLoading(true);
-    // 1. ADD THIS LINE (if you haven't defined it above the function)
-    const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
-
     try {
-      // 2. CHANGE THIS LINE: Add the API_BASE_URL to the fetch call
-      const res = await fetch('https://shl-smart-recommender.onrender.com/recommend', {
+      const res = await fetch('/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       });
-
-      if (!res.ok) { 
-        const e = await res.json().catch(() => ({})); 
-        throw new Error(e.detail || `HTTP ${res.status}`); 
-      }
-      
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
       const data = await res.json();
-      // ... (keep all the rest of your logic for recs, lbl, etc.)
-      
-    } catch (e) {
-      // 3. OPTIONAL BUT RECOMMENDED: Remove the hardcoded 8000 message
-      setError(e.message); 
-    } finally { 
-      setLoading(false); 
-    }
+      let recs = data.recommended_assessments || [];
+      if (filterType) {
+        const lbl = { K: 'Knowledge', P: 'Personality', A: 'Ability', C: 'Competencies', B: 'Biodata' };
+        recs = recs.filter(r => (r.test_type || []).some(t => t.includes(lbl[filterType] || filterType)));
+      }
+      recs = recs.slice(0, maxN);
+      setResults(recs); setCurrentQ(query); setShowResults(true);
+      setQueryCount(c => c + 1);
+      setHistory(h => [{ query, time: new Date().toLocaleTimeString() }, ...h].slice(0, 5));
+      showToast(`${recs.length} assessments found!`, 'success');
+      setTimeout(() => document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth' }), 200);
+    } finally { setLoading(false); }
   };
+
   const handleSave = (item) => {
     setSavedItems(prev => {
       const exists = prev.findIndex(s => s.url === item.url);
