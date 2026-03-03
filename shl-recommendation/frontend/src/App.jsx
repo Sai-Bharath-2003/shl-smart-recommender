@@ -130,13 +130,25 @@ function SearchSection({ onSubmit, queryCount, prefillQuery, grow, shrink }) {
 
   const query = tab === 'text' ? textQ : urlQ;
 
-  const handleSubmit = async () => {
-    if (!query.trim()) { setError('Please enter a job description, query, or URL.'); return; }
-    setError(''); setLoading(true);
-    try { await onSubmit(query.trim(), maxN, filterType); }
-    catch (e) { setError(e.message + ' — make sure the backend is running on port 8000.'); }
-    finally { setLoading(false); }
-  };
+const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
+
+// 2. Update the Health Check (around line 223)
+useEffect(() => {
+  fetch(`${API_BASE_URL}/health`) // Use the full URL
+    .then(r => r.json())
+    .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
+    .catch(() => showToast('API offline — start the backend on Render', 'error'));
+}, []);
+
+// 3. Update the Recommendation Call (around line 231)
+  const handleSubmit = async (query, maxN, filterType) => {
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE_URL}/recommend`, { // Use the full URL
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
 
   return (
     <section className="hero" id="search-section">
