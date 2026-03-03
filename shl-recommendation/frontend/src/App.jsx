@@ -463,14 +463,10 @@ export default function App() {
       .catch(() => showToast('Connecting to Render backend...', 'error'));
   }, [showToast]);
 
- const handleSubmit = async (query, maxN, filterType) => {
+const handleSubmit = async (query, maxN, filterType) => {
     setLoading(true);
-    // 1. ADD THIS LINE (if you haven't defined it above the function)
-    const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
-
     try {
-      // 2. CHANGE THIS LINE: Add the API_BASE_URL to the fetch call
-      const res = await fetch(`${API_BASE_URL}/recommend`, { 
+      const res = await fetch(`${API_BASE_URL}/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
@@ -480,14 +476,29 @@ export default function App() {
         const e = await res.json().catch(() => ({})); 
         throw new Error(e.detail || `HTTP ${res.status}`); 
       }
-      
+
       const data = await res.json();
-      // ... (keep all the rest of your logic for recs, lbl, etc.)
+      let recs = data.recommended_assessments || [];
       
+      if (filterType) {
+        const lbl = { K: 'Knowledge', P: 'Personality', A: 'Ability', C: 'Competencies', B: 'Biodata' };
+        recs = recs.filter(r => (r.test_type || []).some(t => t.includes(lbl[filterType] || filterType)));
+      }
+
+      recs = recs.slice(0, maxN);
+      setResults(recs); 
+      setCurrentQ(query); 
+      setShowResults(true);
+      setQueryCount(c => c + 1);
+      setHistory(h => [{ query, time: new Date().toLocaleTimeString() }, ...h].slice(0, 5));
+      showToast(`${recs.length} assessments found!`, 'success');
+      setTimeout(() => document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth' }), 200);
+
     } catch (e) {
-      // 3. OPTIONAL BUT RECOMMENDED: Remove the hardcoded 8000 message
+      // THIS WAS LIKELY MISSING OR BROKEN
       setError(e.message); 
-    } finally { 
+    } finally {
+      // THIS WAS LIKELY MISSING OR BROKEN
       setLoading(false); 
     }
   };
