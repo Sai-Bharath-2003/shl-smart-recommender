@@ -30,11 +30,11 @@ if not GEMINI_API_KEY:
     )
 
 # Base URLs ONLY — key passed via params={"key":...} at call time, never baked into URL string.
-# text-embedding-005 → 768-dim vectors, requires v1beta
+# gemini-embedding-001 → 3072-dim vectors, requires v1beta
 # gemini-2.0-flash-001 → stable GA model name (not the alias gemini-2.0-flash)
-GEMINI_EMBED_URL    = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-005:embedContent"
+GEMINI_EMBED_URL    = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
 GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent"
-EXPECTED_EMBED_DIM  = 768  # text-embedding-005 outputs 768 dims
+EXPECTED_EMBED_DIM  = 3072  # gemini-embedding-001 outputs 3072 dims
 
 # 3. Robust Path Logic
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -53,11 +53,11 @@ print(f"--- SUCCESS: ENGINE POINTED TO {CATALOG_PATH} ---")
 # ---------------------------------------------------------------------------
 
 def get_embedding_gemini(text: str, api_key: str) -> Optional[np.ndarray]:
-    """Get embedding using Gemini text-embedding-005."""
+    """Get embedding using gemini-embedding-001."""
     # FIX: Use the base URL + pass key via params={} — never concatenate ?key= onto a URL
     # that already has ?key= baked in.
     payload = {
-        "model": "models/text-embedding-005",
+        "model": "models/gemini-embedding-001",
         "content": {"parts": [{"text": text[:8192]}]}
     }
     try:
@@ -516,7 +516,6 @@ class RecommendationEngine:
 # ---------------------------------------------------------------------------
 
 _engine: Optional[RecommendationEngine] = None
-
 
 
 def get_engine(catalog_path: str = CATALOG_PATH, api_key: str = "") -> RecommendationEngine:
