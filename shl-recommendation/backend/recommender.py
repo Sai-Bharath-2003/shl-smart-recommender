@@ -6,6 +6,7 @@ Uses sentence embeddings + LLM reranking for intelligent assessment recommendati
 import json
 import numpy as np
 import os
+import time
 import re
 import logging
 from typing import List, Dict, Optional, Tuple
@@ -158,18 +159,28 @@ class CatalogManager:
         
         for i, assessment in enumerate(self.assessments):
             text = build_assessment_text(assessment)
-            emb = get_embedding_gemini(text, self.api_key)
+            
+            # Retry up to 3 times with exponential backoff for rate limit errors
+            emb = None
+            for attempt in range(3):
+                emb = get_embedding_gemini(text, self.api_key)
+                if emb is not None:
+                    break
+                wait = 2 ** attempt  # 1s, 2s, 4s
+                logger.warning(f"Retry {attempt+1}/3 for index {i}, waiting {wait}s...")
+                time.sleep(wait)
             
             if emb is not None:
                 embeddings_list.append(emb)
                 if embedding_dim is None:
-                    embedding_dim = len(emb)  # Detect 3072 or 768 automatically
+                    embedding_dim = len(emb)  # Detect dim automatically
             else:
-                # If the very first one fails, we use a temporary placeholder
-                # If later ones fail, we use the detected dimension
                 placeholder_dim = embedding_dim if embedding_dim else 3072
                 embeddings_list.append(np.zeros(placeholder_dim, dtype=np.float32))
                 logger.warning(f"Failed to embed index {i}, using zero-vector fallback.")
+            
+            # Rate limit: 0.7s between requests = ~85 req/min (free tier limit is 100/min)
+            time.sleep(0.7)
             
             if (i + 1) % 50 == 0:
                 logger.info(f"Embedded {i+1}/{len(self.assessments)}")
