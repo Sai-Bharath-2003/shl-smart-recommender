@@ -134,6 +134,9 @@ async def recommend(request: RecommendRequest):
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
+@app.get("/")
+def read_root():
+    return {"status": "online", "engine": "SHL Recommendation System"}
 
 if __name__ == '__main__':
     import uvicorn
