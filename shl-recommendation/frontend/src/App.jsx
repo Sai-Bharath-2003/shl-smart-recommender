@@ -133,12 +133,13 @@ function SearchSection({ onSubmit, queryCount, prefillQuery, grow, shrink }) {
 const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
 
 // 2. Update the Health Check (around line 223)
-useEffect(() => {
-  fetch(`${API_BASE_URL}/health`) // Use the full URL
-    .then(r => r.json())
-    .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
-    .catch(() => showToast('API offline — start the backend on Render', 'error'));
-}, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/health`)
+      .then(r => r.json())
+      .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
+      .catch(() => showToast('API offline — connecting to Render...', 'error'));
+  }, []);
 
 // 3. Update the Recommendation Call (around line 231)
   const handleSubmit = async (query, maxN, filterType) => {
