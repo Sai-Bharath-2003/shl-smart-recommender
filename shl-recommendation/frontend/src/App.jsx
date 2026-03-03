@@ -130,15 +130,26 @@ function SearchSection({ onSubmit, queryCount, prefillQuery, grow, shrink }) {
 
   const query = tab === 'text' ? textQ : urlQ;
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "https://shl-smart-recommender.onrender.com";
-// 2. Update the Health Check (around line 223)
+// 1. Define the URL at the top of your App component
+const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/health`)
-      .then(r => r.json())
-      .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
-      .catch(() => showToast('API offline — connecting to Render...', 'error'));
-  }, []);
+// 2. Replace the Health Check useEffect
+useEffect(() => {
+  fetch(`${API_BASE_URL}/health`) // Points directly to Render
+    .then(r => {
+      if (!r.ok) throw new Error('Network response was not ok');
+      return r.json();
+    })
+    .then(d => { 
+      if (d.status === 'healthy' || d.status === 'online') {
+        showToast('API connected ✓', 'success'); 
+      }
+    })
+    .catch(() => {
+      // Updated error message to reflect reality
+      showToast('Connecting to Render backend...', 'error');
+    });
+}, [showToast]);
 
 // 3. Update the Recommendation Call (around line 231)
   const handleSubmit = async (query, maxN, filterType) => {
@@ -444,36 +455,42 @@ export default function App() {
 
   // API health check
   useEffect(() => {
-    fetch('/health').then(r => r.json())
-      .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
-      .catch(() => showToast('API offline — start the backend on port 8000', 'error'));
-  // eslint-disable-next-line
-  }, []);
+    fetch(`${API_BASE_URL}/health`)
+      .then(r => r.json())
+      .then(d => { 
+        if (d.status === 'healthy') showToast('API connected ✓', 'success'); 
+      })
+      .catch(() => showToast('Connecting to Render backend...', 'error'));
+  }, [showToast]);
 
-  const handleSubmit = async (query, maxN, filterType) => {
+ const handleSubmit = async (query, maxN, filterType) => {
     setLoading(true);
+    // 1. ADD THIS LINE (if you haven't defined it above the function)
+    const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
+
     try {
-      const res = await fetch('/recommend', {
+      // 2. CHANGE THIS LINE: Add the API_BASE_URL to the fetch call
+      const res = await fetch(`${API_BASE_URL}/recommend`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
-      const data = await res.json();
-      let recs = data.recommended_assessments || [];
-      if (filterType) {
-        const lbl = { K: 'Knowledge', P: 'Personality', A: 'Ability', C: 'Competencies', B: 'Biodata' };
-        recs = recs.filter(r => (r.test_type || []).some(t => t.includes(lbl[filterType] || filterType)));
-      }
-      recs = recs.slice(0, maxN);
-      setResults(recs); setCurrentQ(query); setShowResults(true);
-      setQueryCount(c => c + 1);
-      setHistory(h => [{ query, time: new Date().toLocaleTimeString() }, ...h].slice(0, 5));
-      showToast(`${recs.length} assessments found!`, 'success');
-      setTimeout(() => document.getElementById('results-top')?.scrollIntoView({ behavior: 'smooth' }), 200);
-    } finally { setLoading(false); }
-  };
 
+      if (!res.ok) { 
+        const e = await res.json().catch(() => ({})); 
+        throw new Error(e.detail || `HTTP ${res.status}`); 
+      }
+      
+      const data = await res.json();
+      // ... (keep all the rest of your logic for recs, lbl, etc.)
+      
+    } catch (e) {
+      // 3. OPTIONAL BUT RECOMMENDED: Remove the hardcoded 8000 message
+      setError(e.message); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
   const handleSave = (item) => {
     setSavedItems(prev => {
       const exists = prev.findIndex(s => s.url === item.url);
