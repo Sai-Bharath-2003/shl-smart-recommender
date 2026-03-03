@@ -130,8 +130,7 @@ function SearchSection({ onSubmit, queryCount, prefillQuery, grow, shrink }) {
 
   const query = tab === 'text' ? textQ : urlQ;
 
-const API_BASE_URL = "https://shl-smart-recommender.onrender.com";
-
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://shl-smart-recommender.onrender.com";
 // 2. Update the Health Check (around line 223)
 
   useEffect(() => {
