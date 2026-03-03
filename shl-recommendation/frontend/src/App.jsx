@@ -413,6 +413,7 @@ function SavedSidebar({ open, onClose, savedItems, onClear, onExport, grow, shri
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const API_BASE_URL = process.env.REACT_APP_API_URL; 
   const { cursorRef, ringRef, grow, shrink } = useCursor();
   const { toasts, show: showToast }          = useToast();
 
@@ -432,7 +433,7 @@ export default function App() {
 
   // API health check
   useEffect(() => {
-    fetch('/health').then(r => r.json())
+    fetch(`${API_BASE_URL}/health`).then(r => r.json())
       .then(d => { if (d.status === 'healthy') showToast('API connected ✓', 'success'); })
       .catch(() => showToast('API offline — start the backend on port 8000', 'error'));
   // eslint-disable-next-line
@@ -441,7 +442,7 @@ export default function App() {
   const handleSubmit = async (query, maxN, filterType) => {
     setLoading(true);
     try {
-      const res = await fetch('/recommend', {
+      const res = await fetch(`${API_BASE_URL}/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
