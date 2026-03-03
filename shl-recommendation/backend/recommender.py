@@ -30,64 +30,22 @@ if not GEMINI_API_KEY:
     )
 
 # Base URLs ONLY — key passed via params={"key":...} at call time, never baked into URL string.
-# text-embedding-004  → 768-dim vectors, requires v1beta
+# text-embedding-005 → 768-dim vectors, requires v1beta
 # gemini-2.0-flash-001 → stable GA model name (not the alias gemini-2.0-flash)
-GEMINI_EMBED_URL    = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+GEMINI_EMBED_URL    = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-005:embedContent"
 GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent"
-EXPECTED_EMBED_DIM  = 768  # text-embedding-004 outputs 768 dims (NOT 3072)
-CATALOG_PATH = "/app/shl-recommendation/scripts/data/shl_catalog.json"
+EXPECTED_EMBED_DIM  = 768  # text-embedding-005 outputs 768 dims
 
-# Local Fallback (for Windows/VS Code testing)
-if not os.path.exists(CATALOG_PATH):
-    # This finds the 'scripts' folder relative to this script's location
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # backend/
-    PROJECT_ROOT = os.path.dirname(BASE_DIR)              # shl-recommendation/
-    CATALOG_PATH = os.path.join(PROJECT_ROOT, 'scripts', 'data', 'shl_catalog.json')
+# 3. Robust Path Logic
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = current_file_dir
+while project_root and not os.path.exists(os.path.join(project_root, 'scripts')):
+    parent = os.path.dirname(project_root)
+    if parent == project_root: break
+    project_root = parent
 
-EMBEDDINGS_PATH = CATALOG_PATH.replace('.json', '_embeddings.npy')
-
-print(f"--- CATALOG_PATH resolved to: {CATALOG_PATH} ---")
-print(f"--- File exists: {os.path.exists(CATALOG_PATH)} ---")
-# Robust path resolution — works locally (backend/ subfolder) and on Render (/app flat)
-# Priority:
-#   1. CATALOG_PATH environment variable (set this on Render to override everything)
-#   2. Walk up from recommender.py location looking for scripts/data/shl_catalog.json
-#   3. Check common Render absolute paths as fallback
-
-def _find_catalog_path() -> str:
-    # Priority 1: explicit env var (set this in Render dashboard)
-    env_path = os.environ.get("CATALOG_PATH", "")
-    if env_path and os.path.exists(env_path):
-        return env_path
-
-    # Priority 2: walk up from this file's directory
-    search_dir = os.path.dirname(os.path.abspath(__file__))
-    for _ in range(6):  # walk up max 6 levels
-        candidate = os.path.join(search_dir, 'scripts', 'data', 'shl_catalog.json')
-        if os.path.exists(candidate):
-            return candidate
-        parent = os.path.dirname(search_dir)
-        if parent == search_dir:
-            break
-        search_dir = parent
-
-    # Priority 3: known Render paths (/app is the Render working dir)
-    fallbacks = [
-        '/app/scripts/data/shl_catalog.json',
-        '/app/backend/../scripts/data/shl_catalog.json',
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts', 'data', 'shl_catalog.json'),
-    ]
-    for path in fallbacks:
-        norm = os.path.normpath(path)
-        if os.path.exists(norm):
-            return norm
-
-    # Return best guess — will fail with clear error at load time
-    return '/app/scripts/data/shl_catalog.json'
-
-CATALOG_PATH = _find_catalog_path()
-print(f"--- CATALOG_PATH resolved to: {CATALOG_PATH} ---")
-print(f"--- File exists: {os.path.exists(CATALOG_PATH)} ---")
+CATALOG_PATH = os.path.join(project_root, 'scripts', 'data', 'shl_catalog.json')
+print(f"--- SUCCESS: ENGINE POINTED TO {CATALOG_PATH} ---")
 
 
 # ---------------------------------------------------------------------------
@@ -95,11 +53,11 @@ print(f"--- File exists: {os.path.exists(CATALOG_PATH)} ---")
 # ---------------------------------------------------------------------------
 
 def get_embedding_gemini(text: str, api_key: str) -> Optional[np.ndarray]:
-    """Get embedding using Gemini text-embedding-004."""
+    """Get embedding using Gemini text-embedding-005."""
     # FIX: Use the base URL + pass key via params={} — never concatenate ?key= onto a URL
     # that already has ?key= baked in.
     payload = {
-        "model": "models/text-embedding-004",
+        "model": "models/text-embedding-005",
         "content": {"parts": [{"text": text[:8192]}]}
     }
     try:
@@ -181,7 +139,7 @@ class CatalogManager:
         """Build or load embeddings for all assessments."""
         if not force_rebuild and os.path.exists(self.embeddings_path):
             cached = np.load(self.embeddings_path)
-            # Validate dimension matches current model (text-embedding-004 = 768 dims)
+            # Validate dimension matches current model (text-embedding-005 = 768 dims)
             # Old cache may be 3072-dim from a different model — delete and rebuild
             if cached.shape[1] != EXPECTED_EMBED_DIM:
                 logger.warning(
@@ -558,6 +516,7 @@ class RecommendationEngine:
 # ---------------------------------------------------------------------------
 
 _engine: Optional[RecommendationEngine] = None
+
 
 
 def get_engine(catalog_path: str = CATALOG_PATH, api_key: str = "") -> RecommendationEngine:
