@@ -1,25 +1,22 @@
-# 1. Use Python base
 FROM python:3.11-slim
 
-# 2. Set working directory inside the container
-WORKDIR /app
+# Install requirements first (cached layer)
+COPY shl-recommendation/backend/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# 3. Copy requirements from the correct nested path
-# We use the path relative to the REPO ROOT
-COPY shl-recommendation/backend/requirements.txt .
+# Copy entire repo into /app
+COPY . /app
 
-# 4. Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Debug: print the full directory tree so we can see exact paths in Render logs
+RUN echo "=== CATALOG SEARCH ===" && find /app -name "shl_catalog.json" 2>/dev/null && echo "=== APP.PY LOCATION ===" && find /app -name "app.py" 2>/dev/null && echo "=== END ==="
 
-# 5. Copy the ENTIRE repository
-COPY . .
+# Set workdir to wherever app.py is — based on your repo: shl-recommendation/backend/
+WORKDIR /app/shl-recommendation/backend
 
-# 6. Expose port
-EXPOSE 8000
+# Set catalog path explicitly
+ENV CATALOG_PATH=/app/shl-recommendation/scripts/data/shl_catalog.json
 
-# 7. Start the app
-# Corrected path to the FastAPI app object in app.py
-# Replace your current Step 7 with this:
-# This moves into the folder where your code lives, then starts uvicorn
-CMD ["sh", "-c", "cd shl-recommendation/backend && uvicorn app:app --host 0.0.0.0 --port 10000"]
+# Verify at build time
+RUN echo "Workdir contents:" && ls -la && echo "Catalog exists:" && test -f $CATALOG_PATH && echo "YES" || echo "NO — check CATALOG SEARCH output above"
 
+CMD uvicorn app:app --host 0.0.0.0 --port $PORT
